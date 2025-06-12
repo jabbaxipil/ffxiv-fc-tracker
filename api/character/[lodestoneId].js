@@ -1,6 +1,4 @@
-// Vercel serverless function to parse character data from Lodestone
-import { JSDOM } from 'jsdom';
-
+// Vercel serverless function to fetch character collection data from FFXIVCollect
 export default async function handler(req, res) {
   const { lodestoneId } = req.query;
 
@@ -17,88 +15,38 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Lodestone ID is required' });
   }
 
-  const fetchLodestonePage = async (url) => {
-    const isCollectionPage = url.includes('/mount') || url.includes('/minion');
-    return await fetch(url, {
-      headers: {
-        'User-Agent': isCollectionPage
-          ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)'
-          : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
-      }
-    }).then(res => res.text()).then(html => new JSDOM(html).window.document);
-  };
-
-
   try {
-    const baseUrl = `https://na.finalfantasyxiv.com/lodestone/character/${lodestoneId}`;
-
-    // Fetch main profile page
-    const profileDoc = await fetchLodestonePage(`${baseUrl}/`);
-
-    // Check for private profile
-    if (profileDoc.body.textContent.includes('This character profile is private')) {
-      return res.status(403).json({
-        error: 'Character profile is private',
-        lodestoneId
-      });
+    const response = await fetch(`https://ffxivcollect.com/api/characters/${lodestoneId}`);
+    if (!response.ok) {
+      if (response.status === 404) {
+        return res.status(404).json({ error: 'Character not found on FFXIVCollect' });
+      }
+      throw new Error(`FFXIVCollect returned ${response.status}`);
     }
 
-    const name = profileDoc.querySelector('.frame__chara__name')?.textContent?.trim();
-    const server = profileDoc.querySelector('.frame__chara__world')?.textContent?.trim();
-    const avatar = profileDoc.querySelector('.frame__chara__face img')?.src;
-
-    if (!name) {
-      throw new Error('Could not parse character name - page structure may have changed');
-    }
-
-    // Fetch collectibles from dedicated subpages
-    const [mountDoc, minionDoc, achievementDoc] = await Promise.all([
-      fetchLodestonePage(`${baseUrl}/mount`),
-      fetchLodestonePage(`${baseUrl}/minion`),
-      fetchLodestonePage(`${baseUrl}/achievement`)
-    ]);
-
-    // Parse mounts
-    const mounts = [];
-    mountDoc.querySelectorAll('.mount__list .mount__list__item').forEach(el => {
-      const mountName = el.querySelector('.mount__list__item__name')?.textContent?.trim();
-      if (mountName) mounts.push({ name: mountName });
-    });
-
-    // Parse minions
-    const minions = [];
-    minionDoc.querySelectorAll('.minion__list .minion__list__item').forEach(el => {
-      const minionName = el.querySelector('.minion__list__item__name')?.textContent?.trim();
-      if (minionName) minions.push({ name: minionName });
-    });
-
-    // Parse achievements
-    const achievements = [];
-    achievementDoc.querySelectorAll('.achievement__list .achievement__list__item').forEach(el => {
-      const achievementName = el.querySelector('.achievement__list__item__name')?.textContent?.trim();
-      if (achievementName) achievements.push({ name: achievementName });
-    });
+    const data = await response.json();
 
     const characterData = {
       lodestoneId,
-      name,
-      server,
-      avatar,
+      name: data.name || null,
+      server: data.server || null,
+      avatar: data.avatar || null,
       collections: {
-        mounts,
-        minions,
-        achievements
+        mounts: data.mounts || [],
+        minions: data.minions || [],
+        achievements: data.achievements || []
       },
       lastUpdated: new Date().toISOString()
     };
 
-    console.log(`✅ Parsed character "${name}": ${mounts.length} mounts, ${minions.length} minions, ${achievements.length} achievements`);
+    console.log(`✅ Retrieved from FFXIVCollect: ${characterData.mounts?.length || 0} mounts`);
+
     res.status(200).json(characterData);
 
   } catch (error) {
-    console.error('Error parsing character:', error);
+    console.error('Error fetching from FFXIVCollect:', error);
     res.status(500).json({
-      error: 'Failed to parse character data',
+      error: 'Failed to fetch character data from FFXIVCollect',
       details: error.message
     });
   }
