@@ -211,9 +211,7 @@ const FFXIVContentTracker = () => {
                 ✅ {m.name}@{m.server || '???'} — Lodestone ID: {m.lodestoneId || 'Not yet synced'}
               </li>
             ))}
-          </ul>
-        </div>
-      )}
+
 
       {/* Content Selector and Filter Controls */}
       <div className="flex flex-wrap items-center gap-4 border-t pt-6">
