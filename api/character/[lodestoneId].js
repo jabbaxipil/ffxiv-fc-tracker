@@ -32,9 +32,9 @@ export default async function handler(req, res) {
       server: data.server || null,
       avatar: data.avatar || null,
       collections: {
-        mounts: data.mounts || [],
-        minions: data.minions || [],
-        achievements: data.achievements || []
+        mounts: (data.mounts?.results || []),
+        minions: (data.minions?.results || []),
+        achievements: (data.achievements?.results || [])
       },
       lastUpdated: new Date().toISOString()
     };
