@@ -228,11 +228,10 @@ const FFXIVContentTracker = () => {
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-900">FC Tracker</h1>
           </div>
-          <p className="text-gray-600">Track your FC's progress with live Lodestone data via Vercel serverless functions</p>
         </div>
       </div>
 
@@ -314,18 +313,7 @@ const FFXIVContentTracker = () => {
                   <div key={member.id} className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
                     <div className="flex items-start gap-3">
                       <div className="flex-shrink-0">
-                        {member.avatar ? (
-                          <img 
-                            src={member.avatar} 
-                            alt={member.name}
-                            className="w-12 h-12 rounded-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center" style={{ display: member.avatar ? 'none' : 'flex' }}>
+                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
                           <Users className="w-6 h-6 text-gray-400" />
                         </div>
                       </div>
@@ -469,6 +457,7 @@ const FFXIVContentTracker = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
+                      <p className="text-sm text-gray-600 mb-3">{item.description || 'Summon forth your collectible.'}</p>
                       
                       {item.source && (
                         <div className="text-sm text-blue-600 mb-2">
