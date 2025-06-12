@@ -1,6 +1,7 @@
 // Full script for FFXIVContentTracker with FC member checklist integration
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Trophy, Download, Filter, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
+import { JSDOM } from 'jsdom';
 
 const FFXIVContentTracker = () => {
   const [content, setContent] = useState({ mounts: [], achievements: [], minions: [] });
@@ -130,15 +131,6 @@ const FFXIVContentTracker = () => {
       const members = await response.json();
       setFcMemberList(members);
       setAccordionOpen(true);
-      const doc = parser.parseFromString(html, 'text/html');
-      const entries = Array.from(doc.querySelectorAll('.entry'));
-      const members = entries.map(entry => {
-        const name = entry.querySelector('.entry__name')?.textContent?.trim();
-        const server = entry.querySelector('.entry__world')?.textContent?.trim();
-        return name && server ? { name, server } : null;
-      }).filter(Boolean);
-      setFcMemberList(members);
-      setAccordionOpen(true);
     } catch (err) {
       console.error('Failed to fetch FC members:', err);
     }
@@ -149,7 +141,7 @@ const FFXIVContentTracker = () => {
   };
 
   const addSelectedFCMembers = () => {
-    const newMembers = selectedFCMembers.map(m => ({ ...m, id: Date.now() + Math.random(), completedContent: new Set(), lodestoneId: null }));
+    const newMembers = selectedFCMembers.map(m => ({ ...m, id: Date.now() + Math.random(), completedContent: new Set(), lodestoneId: m.lodestoneId || null }));
     setFcMembers(prev => [...prev, ...newMembers]);
     setSelectedFCMembers([]);
     setAccordionOpen(false);
@@ -184,7 +176,7 @@ const FFXIVContentTracker = () => {
                     checked={selectedFCMembers.includes(member)}
                     onChange={() => toggleFCMemberSelection(member)}
                   />
-                  {member.name}@{member.server}
+                  {member.name}
                 </label>
               ))}
             </div>

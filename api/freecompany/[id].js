@@ -6,25 +6,32 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'Free Company ID is required' });
 
   try {
-    const response = await fetch(`https://na.finalfantasyxiv.com/lodestone/freecompany/${id}/member/`, {
+    const url = `https://ffxivcollect.com/fc/${id}`;
+    const response = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0' }
     });
 
-    if (!response.ok) throw new Error(`Lodestone returned ${response.status}`);
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'Failed to fetch FC page from FFXIVCollect' });
+    }
 
     const html = await response.text();
     const dom = new JSDOM(html);
-    const entries = Array.from(dom.window.document.querySelectorAll('.entry'));
+    const document = dom.window.document;
 
-    const members = entries.map(entry => {
-      const name = entry.querySelector('.entry__name')?.textContent?.trim();
-      const server = entry.querySelector('.entry__world')?.textContent?.trim();
-      return name && server ? { name, server } : null;
-    }).filter(Boolean);
+    const members = Array.from(document.querySelectorAll('a[href^="/characters/"]'))
+      .map(a => {
+        const href = a.getAttribute('href');
+        const name = a.textContent.trim();
+        const idMatch = href.match(/\\/characters\\/(\\d+)/);
+        const lodestoneId = idMatch ? idMatch[1] : null;
+        return lodestoneId && name ? { name, lodestoneId } : null;
+      })
+      .filter(Boolean);
 
     res.status(200).json(members);
-  } catch (err) {
-    console.error('Error fetching FC members:', err);
-    res.status(500).json({ error: 'Failed to fetch Free Company members', details: err.message });
+  } catch (error) {
+    console.error('FC fetch error:', error);
+    res.status(500).json({ error: 'Server error', details: error.message });
   }
 }
