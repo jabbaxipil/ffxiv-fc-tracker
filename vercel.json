@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/character/[lodestoneId].js": {
+      "maxDuration": 30
+    },
+    "api/character/search.js": {
+      "maxDuration": 30
+    },
+    "api/content/[type].js": {
+      "maxDuration": 15
+    }
+  }
+}
