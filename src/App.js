@@ -1,4 +1,17 @@
-// Full script for FFXIVContentTracker with FC member checklist integration
+const data = await fetchCharacterData(lodestoneId);
+      console.log('Full character data received:', data);
+      console.log('Portrait field:', data.portrait);
+      console.log('Avatar field:', data.avatar);
+      console.log('Available fields:', Object.keys(data));
+      const completedByType = matchCollectionsToContent(data.collections);
+      const newMemberData = { 
+        ...member, 
+        completedContent: completedByType, 
+        lodestoneId, 
+        avatar: data.portrait || data.avatar // Try portrait first, then avatar as fallback
+      };
+      console.log('Updated member data:', newMemberData);
+      setFcMembers(prev => prev.map(m => m.id === memberId ? newMemberData : m));// Full script for FFXIVContentTracker with FC member checklist integration
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Trophy, Download, Filter, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 
