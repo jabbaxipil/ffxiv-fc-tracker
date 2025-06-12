@@ -1,7 +1,7 @@
 // Full script for FFXIVContentTracker with FC member checklist integration
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Trophy, Download, Filter, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
-import { JSDOM } from 'jsdom';
+// removed jsdom import since we use cheerio now
 
 const FFXIVContentTracker = () => {
   const [content, setContent] = useState({ mounts: [], achievements: [], minions: [] });
