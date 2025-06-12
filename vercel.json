@@ -9,5 +9,19 @@
     "api/content/[type].js": {
       "maxDuration": 15
     }
-  }
+  },
+  "rewrites": [
+    {
+      "source": "/api/content/:type",
+      "destination": "/api/content/[type].js"
+    },
+    {
+      "source": "/api/character/search",
+      "destination": "/api/character/search.js"
+    },
+    {
+      "source": "/api/character/:lodestoneId",
+      "destination": "/api/character/[lodestoneId].js"
+    }
+  ]
 }
