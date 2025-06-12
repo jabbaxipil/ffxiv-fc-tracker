@@ -56,7 +56,7 @@ const FFXIVContentTracker = () => {
     }
   };
 
-  // Extract unique sources from all content types
+  // Extract unique source types from all content types
   const updateContentSources = () => {
     const allSources = new Set(['all']);
     
@@ -64,8 +64,8 @@ const FFXIVContentTracker = () => {
       items.forEach(item => {
         if (item.sources && Array.isArray(item.sources)) {
           item.sources.forEach(source => {
-            if (source.text) {
-              allSources.add(source.text);
+            if (source.type) {
+              allSources.add(source.type);
             }
           });
         }
@@ -220,10 +220,10 @@ const FFXIVContentTracker = () => {
       const matchesFilter = filterBy === 'missing' ? ownedCount < fcMembers.length : ownedCount === fcMembers.length;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Check if item matches selected source
+      // Check if item matches selected source type
       let matchesSource = selectedSource === 'all';
       if (!matchesSource && item.sources && Array.isArray(item.sources)) {
-        matchesSource = item.sources.some(source => source.text === selectedSource);
+        matchesSource = item.sources.some(source => source.type === selectedSource);
       }
       
       return matchesFilter && matchesSearch && matchesSource;
