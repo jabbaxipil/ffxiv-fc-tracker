@@ -17,6 +17,7 @@ const FFXIVContentTracker = () => {
   const [fcMemberList, setFcMemberList] = useState([]);
   const [selectedFCMembers, setSelectedFCMembers] = useState([]);
   const [selectedSource, setSelectedSource] = useState('all');
+  const [accordionOpen, setAccordionOpen] = useState(false);
 
   // FFXIV Collect sources
   const contentSources = [
