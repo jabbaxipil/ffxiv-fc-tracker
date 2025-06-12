@@ -18,29 +18,9 @@ const FFXIVContentTracker = () => {
   const [selectedFCMembers, setSelectedFCMembers] = useState([]);
   const [selectedSource, setSelectedSource] = useState('all');
   const [accordionOpen, setAccordionOpen] = useState(false);
-
-  // FFXIV Collect sources
-  const contentSources = [
-    'all',
-    'Achievement',
-    'Dungeon',
-    'Trial',
-    'Raid',
-    'Extreme',
-    'Savage',
-    'Ultimate',
-    'Deep Dungeon',
-    'PvP',
-    'Gold Saucer',
-    'Quest',
-    'FATE',
-    'Hunt',
-    'Venture',
-    'Craft',
-    'Gather',
-    'Shop',
-    'Other'
-  ];
+  
+  // Dynamic content sources - will be populated from API data
+  const [contentSources, setContentSources] = useState(['all']);
 
   const API_BASE = process.env.NODE_ENV === 'production' 
     ? 'https://ffxiv-fc-tracker.vercel.app/api' 
@@ -66,12 +46,39 @@ const FFXIVContentTracker = () => {
         });
         return newContent;
       });
+      
+      // Update content sources based on loaded data
+      updateContentSources();
     } catch (error) {
       console.error('Error loading content:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Extract unique sources from all content types
+  const updateContentSources = () => {
+    const allSources = new Set(['all']);
+    
+    Object.values(content).forEach(items => {
+      items.forEach(item => {
+        if (item.sources && Array.isArray(item.sources)) {
+          item.sources.forEach(source => {
+            if (source.text) {
+              allSources.add(source.text);
+            }
+          });
+        }
+      });
+    });
+    
+    setContentSources([...allSources].sort());
+  };
+
+  // Update sources when content changes
+  useEffect(() => {
+    updateContentSources();
+  }, [content]);
 
   const searchCharacter = async (name, server) => {
     const response = await fetch(`${API_BASE}/character/search?name=${encodeURIComponent(name)}&server=${encodeURIComponent(server)}`);
@@ -116,6 +123,7 @@ const FFXIVContentTracker = () => {
         
         if (match) {
           completedByType[type].add(match.id);
+          console.log(`Matched: "${item.name}" -> "${match.name}" (ID: ${match.id})`);
         }
       });
     });
@@ -211,7 +219,13 @@ const FFXIVContentTracker = () => {
       const ownedCount = fcMembers.filter(m => m.completedContent?.[selectedContentType]?.has(item.id)).length;
       const matchesFilter = filterBy === 'missing' ? ownedCount < fcMembers.length : ownedCount === fcMembers.length;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesSource = selectedSource === 'all' || item.source === selectedSource;
+      
+      // Check if item matches selected source
+      let matchesSource = selectedSource === 'all';
+      if (!matchesSource && item.sources && Array.isArray(item.sources)) {
+        matchesSource = item.sources.some(source => source.text === selectedSource);
+      }
+      
       return matchesFilter && matchesSearch && matchesSource;
     });
 
@@ -459,15 +473,15 @@ const FFXIVContentTracker = () => {
                       <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
                       <p className="text-sm text-gray-600 mb-3">{item.description || 'Summon forth your collectible.'}</p>
                       
-                      {item.source && (
+                      {item.sources && item.sources.length > 0 && (
                         <div className="text-sm text-blue-600 mb-2">
-                          <strong>Source:</strong> {item.source}
+                          <strong>Source:</strong> {item.sources[0].text}
                         </div>
                       )}
                       
                       {item.patch && (
                         <div className="text-sm text-gray-500 mb-3">
-                          Patch {item.patch} • Unknown difficulty
+                          Patch {item.patch}
                         </div>
                       )}
 
