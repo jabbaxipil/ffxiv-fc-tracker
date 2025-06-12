@@ -87,17 +87,15 @@ const FFXIVContentTracker = () => {
   };
 
   const matchCollectionsToContent = (collections) => {
-    const completedIds = new Set();
-    
-    // Debug logging to see what we're working with
-    console.log('Collections from API:', collections);
-    console.log('Current content:', content);
+    const completedByType = {
+      mounts: new Set(),
+      minions: new Set(), 
+      achievements: new Set()
+    };
     
     ['mounts', 'minions', 'achievements'].forEach(type => {
       const collectionItems = collections[type] || [];
       const contentItems = content[type] || [];
-      
-      console.log(`${type} - Collection items:`, collectionItems.length, 'Content items:', contentItems.length);
       
       collectionItems.forEach(item => {
         // Try exact name match first
@@ -117,16 +115,12 @@ const FFXIVContentTracker = () => {
         }
         
         if (match) {
-          completedIds.add(match.id);
-          console.log(`Matched: "${item.name}" -> "${match.name}" (ID: ${match.id})`);
-        } else {
-          console.log(`No match found for: "${item.name}"`);
+          completedByType[type].add(match.id);
         }
       });
     });
     
-    console.log('Total matched IDs:', completedIds.size);
-    return completedIds;
+    return completedByType;
   };
 
   const syncMemberProgress = async (memberId) => {
@@ -143,8 +137,8 @@ const FFXIVContentTracker = () => {
         setFcMembers(prev => prev.map(m => m.id === memberId ? { ...m, lodestoneId } : m));
       }
       const data = await fetchCharacterData(lodestoneId);
-      const completedIds = matchCollectionsToContent(data.collections);
-      setFcMembers(prev => prev.map(m => m.id === memberId ? { ...m, completedContent: completedIds, lodestoneId, avatar: data.avatar } : m));
+      const completedByType = matchCollectionsToContent(data.collections);
+      setFcMembers(prev => prev.map(m => m.id === memberId ? { ...m, completedContent: completedByType, lodestoneId, avatar: data.avatar } : m));
       setLastSyncTimes(prev => ({ ...prev, [memberId]: new Date() }));
     } catch (error) {
       setSyncErrors(prev => ({ ...prev, [memberId]: error.message }));
@@ -163,7 +157,7 @@ const FFXIVContentTracker = () => {
   const addMember = () => {
     const [name, server] = newMember.split('@');
     if (name && server) {
-      setFcMembers([...fcMembers, { name: name.trim(), server: server.trim(), id: Date.now(), completedContent: new Set(), lodestoneId: null }]);
+      setFcMembers([...fcMembers, { name: name.trim(), server: server.trim(), id: Date.now(), completedContent: { mounts: new Set(), minions: new Set(), achievements: new Set() }, lodestoneId: null }]);
       setNewMember('');
     }
   };
@@ -203,7 +197,7 @@ const FFXIVContentTracker = () => {
       ...m,
       id: Date.now() + Math.random(),
       server: m.server || '',
-      completedContent: new Set(),
+      completedContent: { mounts: new Set(), minions: new Set(), achievements: new Set() },
       lodestoneId: m.lodestoneId || null
     }));
 
@@ -214,7 +208,7 @@ const FFXIVContentTracker = () => {
 
   const filteredContent = content[selectedContentType]
     .filter(item => {
-      const ownedCount = fcMembers.filter(m => m.completedContent?.has(item.id)).length;
+      const ownedCount = fcMembers.filter(m => m.completedContent?.[selectedContentType]?.has(item.id)).length;
       const matchesFilter = filterBy === 'missing' ? ownedCount < fcMembers.length : ownedCount === fcMembers.length;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesSource = selectedSource === 'all' || item.source === selectedSource;
@@ -223,7 +217,8 @@ const FFXIVContentTracker = () => {
 
   const getCompletionStats = (member) => {
     const currentContent = content[selectedContentType] || [];
-    const completed = currentContent.filter(item => member.completedContent?.has(item.id)).length;
+    const memberCompleted = member.completedContent?.[selectedContentType] || new Set();
+    const completed = currentContent.filter(item => memberCompleted.has(item.id)).length;
     const total = currentContent.length;
     return { completed, total, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
   };
@@ -466,7 +461,7 @@ const FFXIVContentTracker = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {filteredContent.map((item) => {
-              const completedMembers = fcMembers.filter(m => m.completedContent?.has(item.id));
+              const completedMembers = fcMembers.filter(m => m.completedContent?.[selectedContentType]?.has(item.id));
               const completionRate = fcMembers.length > 0 ? Math.round((completedMembers.length / fcMembers.length) * 100) : 0;
               
               return (
@@ -491,7 +486,7 @@ const FFXIVContentTracker = () => {
                         <div className="text-sm font-medium text-gray-700 mb-1">Member Progress:</div>
                         <div className="flex flex-wrap gap-1">
                           {fcMembers.map((member) => {
-                            const hasCompleted = member.completedContent?.has(item.id);
+                            const hasCompleted = member.completedContent?.[selectedContentType]?.has(item.id);
                             return (
                               <span
                                 key={member.id}
