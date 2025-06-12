@@ -32,12 +32,10 @@ export default async function handler(req, res) {
       server: data.server || null,
       avatar: data.avatar || null,
       collections: {
-        mounts: (data.mounts?.results || []),
-        minions: (data.minions?.results || []),
-        achievements: (data.achievements?.results || [])
-      },
-      lastUpdated: new Date().toISOString()
-    };
+        mounts: data.mounts?.entries || [],
+        minions: data.minions?.entries || [],
+        achievements: data.achievements?.entries || []
+      };
 
     console.log(`✅ Retrieved from FFXIVCollect: ${characterData.mounts?.length || 0} mounts`);
 
