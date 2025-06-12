@@ -128,7 +128,9 @@ const FFXIVContentTracker = () => {
   const fetchFCMembers = async () => {
     try {
       const response = await fetch(`${API_BASE}/freecompany/9231394073691144051`);
-      const members = await response.json();
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error(data.error || 'Unexpected response');
+      setFcMemberList(data);
       setFcMemberList(members);
       setAccordionOpen(true);
     } catch (err) {

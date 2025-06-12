@@ -1,4 +1,3 @@
-// pages/api/freecompany/[id].js
 import cheerio from 'cheerio';
 
 export default async function handler(req, res) {
@@ -9,7 +8,8 @@ export default async function handler(req, res) {
   try {
     const response = await fetch(`https://ffxivcollect.com/fc/${id}`);
     if (!response.ok) {
-      return res.status(response.status).json({ error: 'Failed to load FC page' });
+      const html = await response.text();
+      return res.status(response.status).json({ error: `FFXIVCollect returned ${response.status}`, htmlSnippet: html.slice(0, 100) });
     }
 
     const html = await response.text();
@@ -19,9 +19,10 @@ export default async function handler(req, res) {
     $('a[href^="/characters/"]').each((_, el) => {
       const href = $(el).attr('href');
       const name = $(el).text().trim();
-      const idMatch = href.match(/\\/characters\\/(\\d+)/);
-      if (idMatch && name) {
-        members.push({ name, lodestoneId: idMatch[1] });
+      const match = href.match(/\\/characters\\/(\\d+)/);
+      const lodestoneId = match?.[1];
+      if (name && lodestoneId) {
+        members.push({ name, lodestoneId });
       }
     });
 
