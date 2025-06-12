@@ -18,22 +18,16 @@ export default async function handler(req, res) {
   }
 
   const fetchLodestonePage = async (url) => {
-    const response = await fetch(url, {
+    const isCollectionPage = url.includes('/mount') || url.includes('/minion');
+    return await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        'User-Agent': isCollectionPage
+          ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)'
+          : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
       }
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('Character not found');
-      }
-      throw new Error(`Lodestone returned ${response.status}`);
-    }
-
-    const html = await response.text();
-    return new JSDOM(html).window.document;
+    }).then(res => res.text()).then(html => new JSDOM(html).window.document);
   };
+
 
   try {
     const baseUrl = `https://na.finalfantasyxiv.com/lodestone/character/${lodestoneId}`;
