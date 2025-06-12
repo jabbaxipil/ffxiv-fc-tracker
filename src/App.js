@@ -211,8 +211,44 @@ const FFXIVContentTracker = () => {
                 ✅ {m.name}@{m.server || '???'} — Lodestone ID: {m.lodestoneId || 'Not yet synced'}
               </li>
             ))}
+          </ul>
         </div>
       )}
+    </div>
+
+      {/* Content Selector and Filter Controls */}
+      <div className="flex flex-wrap items-center gap-4 border-t pt-6">
+        <div className="flex gap-2">
+          <button onClick={() => setSelectedContentType('mounts')} className={`px-3 py-1 rounded ${selectedContentType === 'mounts' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Mounts</button>
+          <button onClick={() => setSelectedContentType('minions')} className={`px-3 py-1 rounded ${selectedContentType === 'minions' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Minions</button>
+          <button onClick={() => setSelectedContentType('achievements')} className={`px-3 py-1 rounded ${selectedContentType === 'achievements' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Achievements</button>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={() => setFilterBy('missing')} className={`px-3 py-1 rounded ${filterBy === 'missing' ? 'bg-red-600 text-white' : 'bg-gray-200'}`}>Missing</button>
+          <button onClick={() => setFilterBy('owned')} className={`px-3 py-1 rounded ${filterBy === 'owned' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>Owned</button>
+        </div>
+      </div>
+
+      {/* Filtered Content Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+        {content[selectedContentType]
+          .filter(item => {
+            const ownedCount = fcMembers.filter(m => m.completedContent?.has(item.id)).length;
+            return filterBy === 'missing' ? ownedCount < fcMembers.length : ownedCount === fcMembers.length;
+          })
+          .map(item => (
+            <div key={item.id} className="border rounded p-3 bg-white shadow-sm">
+              <h4 className="font-medium mb-1">{item.name}</h4>
+              <div className="flex flex-wrap gap-2 text-sm">
+                {fcMembers.map(member => (
+                  <span key={member.id} className={`px-2 py-1 rounded text-white ${member.completedContent?.has(item.id) ? 'bg-green-500' : 'bg-gray-500'}`}>
+                    {member.name.split(' ')[0]}
+                  </span>
+                ))}
+              </div>
+            </div>
+        ))}
+      </div>
     </div>
   );
 };
