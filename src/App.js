@@ -20,7 +20,7 @@ const FFXIVContentTracker = () => {
   const [accordionOpen, setAccordionOpen] = useState(false);
 
   const API_BASE = process.env.NODE_ENV === 'production' 
-    ? 'https://ffxiv-fc-tracker.vercel.app/api' 
+    ? 'https://ffxiv-fx-tracker.vercel.app/api' 
     : '/api';
 
   useEffect(() => { loadContentFromAPI(); }, []);
@@ -107,21 +107,10 @@ const FFXIVContentTracker = () => {
   const addMember = () => {
     const [name, server] = newMember.split('@');
     if (name && server) {
-      const id = Date.now() + Math.random(); // guaranteed unique
-      const newEntry = {
-        name: name.trim(),
-        server: server.trim(),
-        id,
-        completedContent: new Set(),
-        lodestoneId: null
-      };
-      setFcMembers(prev => [...prev, newEntry]);
+      setFcMembers([...fcMembers, { name: name.trim(), server: server.trim(), id: Date.now(), completedContent: new Set(), lodestoneId: null }]);
       setNewMember('');
-    } else {
-      alert('Please enter a character in the format Name@Server');
     }
   };
-
 
   const removeMember = (id) => setFcMembers(fcMembers.filter(m => m.id !== id));
 
@@ -139,13 +128,8 @@ const FFXIVContentTracker = () => {
   const fetchFCMembers = async () => {
     try {
       const response = await fetch(`${API_BASE}/freecompany/9231394073691144051`);
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        throw new Error('Invalid JSON response from API');
-      }
-      if (!Array.isArray(data)) throw new Error(data?.error || 'Unexpected server response');
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error(data.error || 'Unexpected response from server');
       setFcMemberList(data);
       setAccordionOpen(true);
     } catch (err) {
@@ -154,27 +138,29 @@ const FFXIVContentTracker = () => {
   };
 
   const toggleFCMemberSelection = (member) => {
-    setSelectedFCMembers(prev =>
-      prev.some(m => m.lodestoneId === member.lodestoneId)
-        ? prev.filter(m => m.lodestoneId !== member.lodestoneId)
-        : [...prev, member]
-    );
+    setSelectedFCMembers(prev => prev.includes(member) ? prev.filter(m => m !== member) : [...prev, member]);
   };
 
   const addSelectedFCMembers = () => {
-    const newMembers = selectedFCMembers.map(m => ({
+    const existingIds = new Set(fcMembers.map(m => m.lodestoneId));
+    const newMembers = selectedFCMembers.filter(m => !existingIds.has(m.lodestoneId)).map(m => ({
       ...m,
-      id: Date.now() + Math.random(), // ensure unique ID
-      server: m.server || '',          // placeholder in case server isn't scraped
+      id: Date.now() + Math.random(),
+      server: m.server || '',
       completedContent: new Set(),
       lodestoneId: m.lodestoneId || null
     }));
 
-    setFcMembers(prev => [...prev, ...newMembers]);
+    console.log('Adding selected FC members:', selectedFCMembers);
+    setFcMembers(prev => {
+      const updated = [...prev, ...newMembers];
+      console.log('Updated fcMembers:', updated);
+      return updated;
+    });
+
     setSelectedFCMembers([]);
     setAccordionOpen(false);
   };
-
 
   return (
     <div className="p-6 space-y-6">
@@ -202,7 +188,7 @@ const FFXIVContentTracker = () => {
                 <label key={i} className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={selectedFCMembers.some(m => m.lodestoneId === member.lodestoneId)}
+                    checked={selectedFCMembers.includes(member)}
                     onChange={() => toggleFCMemberSelection(member)}
                   />
                   {member.name}
@@ -216,7 +202,18 @@ const FFXIVContentTracker = () => {
         )}
       </div>
 
-      {/* Add rest of the UI from original App.js here if needed */}
+      {fcMembers.length > 0 && (
+        <div className="mt-6 border-t pt-4">
+          <h2 className="text-lg font-semibold mb-2">Tracked Members</h2>
+          <ul className="space-y-2">
+            {fcMembers.map((m, i) => (
+              <li key={m.id} className="text-sm">
+                ✅ {m.name}@{m.server || '???'} — Lodestone ID: {m.lodestoneId || 'Not yet synced'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
