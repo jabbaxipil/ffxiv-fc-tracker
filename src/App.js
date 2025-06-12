@@ -20,7 +20,7 @@ const FFXIVContentTracker = () => {
   const [accordionOpen, setAccordionOpen] = useState(false);
 
   const API_BASE = process.env.NODE_ENV === 'production' 
-    ? 'https://ffxiv-fx-tracker.vercel.app/api' 
+    ? 'https://ffxiv-fc-tracker.vercel.app/api' 
     : '/api';
 
   useEffect(() => { loadContentFromAPI(); }, []);
