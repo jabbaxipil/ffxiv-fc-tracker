@@ -6,29 +6,40 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'Free Company ID is required' });
 
   try {
-    const response = await fetch(`https://ffxivcollect.com/fc/${id}`);
-    if (!response.ok) {
-      const html = await response.text();
-      return res.status(response.status).json({ error: `FFXIVCollect returned ${response.status}`, htmlSnippet: html.slice(0, 100) });
-    }
+    const fcUrl = `https://ffxivcollect.com/fc/${id}`;
+    const response = await fetch(fcUrl, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
 
     const html = await response.text();
-    const $ = cheerio.load(html);
 
+    if (!response.ok || !html.includes('/characters/')) {
+      return res.status(response.status).json({
+        error: `FFXIVCollect failed or returned no usable data`,
+        htmlSnippet: html.slice(0, 200)
+      });
+    }
+
+    const $ = cheerio.load(html);
     const members = [];
+
     $('a[href^="/characters/"]').each((_, el) => {
       const href = $(el).attr('href');
       const name = $(el).text().trim();
-      const match = href.match(/\\/characters\\/(\\d+)/);
+      const match = href.match(/\/characters\/(\d+)/);
       const lodestoneId = match?.[1];
       if (name && lodestoneId) {
         members.push({ name, lodestoneId });
       }
     });
 
+    if (members.length === 0) {
+      return res.status(404).json({ error: 'No members found on FC page.' });
+    }
+
     res.status(200).json(members);
-  } catch (err) {
-    console.error('FC fetch error:', err);
-    res.status(500).json({ error: 'Failed to fetch FC data', details: err.message });
+  } catch (error) {
+    console.error('❌ Scrape failed:', error);
+    res.status(500).json({ error: 'Failed to fetch FC members', details: error.message });
   }
 }

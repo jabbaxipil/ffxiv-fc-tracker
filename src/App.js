@@ -128,8 +128,13 @@ const FFXIVContentTracker = () => {
   const fetchFCMembers = async () => {
     try {
       const response = await fetch(`${API_BASE}/freecompany/9231394073691144051`);
-      const data = await response.json();
-      if (!Array.isArray(data)) throw new Error(data.error || 'Unexpected response from server');
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error('Invalid JSON response from API');
+      }
+      if (!Array.isArray(data)) throw new Error(data?.error || 'Unexpected server response');
       setFcMemberList(data);
       setAccordionOpen(true);
     } catch (err) {
