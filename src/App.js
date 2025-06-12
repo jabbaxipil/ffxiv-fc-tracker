@@ -190,8 +190,9 @@ const FFXIVContentTracker = () => {
     });
 
   const getCompletionStats = (member) => {
-    const completed = member.completedContent ? member.completedContent.size : 0;
-    const total = content[selectedContentType].length;
+    const currentContent = content[selectedContentType] || [];
+    const completed = currentContent.filter(item => member.completedContent?.has(item.id)).length;
+    const total = currentContent.length;
     return { completed, total, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
   };
 
