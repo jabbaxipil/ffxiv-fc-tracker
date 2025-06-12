@@ -107,10 +107,21 @@ const FFXIVContentTracker = () => {
   const addMember = () => {
     const [name, server] = newMember.split('@');
     if (name && server) {
-      setFcMembers([...fcMembers, { name: name.trim(), server: server.trim(), id: Date.now(), completedContent: new Set(), lodestoneId: null }]);
+      const id = Date.now() + Math.random(); // guaranteed unique
+      const newEntry = {
+        name: name.trim(),
+        server: server.trim(),
+        id,
+        completedContent: new Set(),
+        lodestoneId: null
+      };
+      setFcMembers(prev => [...prev, newEntry]);
       setNewMember('');
+    } else {
+      alert('Please enter a character in the format Name@Server');
     }
   };
+
 
   const removeMember = (id) => setFcMembers(fcMembers.filter(m => m.id !== id));
 
@@ -151,11 +162,19 @@ const FFXIVContentTracker = () => {
   };
 
   const addSelectedFCMembers = () => {
-    const newMembers = selectedFCMembers.map(m => ({ ...m, id: Date.now() + Math.random(), completedContent: new Set(), lodestoneId: m.lodestoneId || null }));
+    const newMembers = selectedFCMembers.map(m => ({
+      ...m,
+      id: Date.now() + Math.random(), // ensure unique ID
+      server: m.server || '',          // placeholder in case server isn't scraped
+      completedContent: new Set(),
+      lodestoneId: m.lodestoneId || null
+    }));
+
     setFcMembers(prev => [...prev, ...newMembers]);
     setSelectedFCMembers([]);
     setAccordionOpen(false);
   };
+
 
   return (
     <div className="p-6 space-y-6">
