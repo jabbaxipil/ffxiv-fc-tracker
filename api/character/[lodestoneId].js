@@ -9,14 +9,16 @@ export default async function handler(req, res) {
   if (!lodestoneId) return res.status(400).json({ error: 'Lodestone ID is required' });
 
   const fetchCollection = async (type) => {
-    const url = `https://ffxivcollect.com/api/users/${lodestoneId}/${type}/owned`;
+    const url = `https://ffxivcollect.com/api/characters/${lodestoneId}/${type}/owned`;
     const response = await fetch(url);
+
     if (!response.ok) {
-      if (response.status === 404) return [];
-      const text = await response.text();
-      throw new Error(`Failed to fetch ${type}: ${response.status} - ${text}`);
+      console.warn(`⚠️ Failed to fetch ${type}: ${response.status}`);
+      return [];
     }
-    return await response.json();
+
+    const data = await response.json();
+    return Array.isArray(data) ? data : [];
   };
 
   try {
@@ -39,11 +41,10 @@ export default async function handler(req, res) {
       lastUpdated: new Date().toISOString()
     };
 
-    console.log(`✅ Retrieved ${mounts.length} mounts, ${minions.length} minions, ${achievements.length} achievements for ${lodestoneId}`);
     res.status(200).json(characterData);
 
   } catch (err) {
-    console.error('❌ Error fetching from FFXIVCollect:', err);
-    res.status(502).json({ error: 'Failed to fetch collections from FFXIVCollect', details: err.message });
+    console.error('❌ FFXIVCollect fetch error:', err);
+    res.status(502).json({ error: 'Failed to fetch from FFXIVCollect', details: err.message });
   }
 }
