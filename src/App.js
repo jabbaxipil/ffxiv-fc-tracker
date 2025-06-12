@@ -16,7 +16,30 @@ const FFXIVContentTracker = () => {
   const [lastSyncTimes, setLastSyncTimes] = useState({});
   const [fcMemberList, setFcMemberList] = useState([]);
   const [selectedFCMembers, setSelectedFCMembers] = useState([]);
-  const [accordionOpen, setAccordionOpen] = useState(false);
+  const [selectedSource, setSelectedSource] = useState('all');
+
+  // FFXIV Collect sources
+  const contentSources = [
+    'all',
+    'Achievement',
+    'Dungeon',
+    'Trial',
+    'Raid',
+    'Extreme',
+    'Savage',
+    'Ultimate',
+    'Deep Dungeon',
+    'PvP',
+    'Gold Saucer',
+    'Quest',
+    'FATE',
+    'Hunt',
+    'Venture',
+    'Craft',
+    'Gather',
+    'Shop',
+    'Other'
+  ];
 
   const API_BASE = process.env.NODE_ENV === 'production' 
     ? 'https://ffxiv-fc-tracker.vercel.app/api' 
@@ -161,7 +184,8 @@ const FFXIVContentTracker = () => {
       const ownedCount = fcMembers.filter(m => m.completedContent?.has(item.id)).length;
       const matchesFilter = filterBy === 'missing' ? ownedCount < fcMembers.length : ownedCount === fcMembers.length;
       const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesFilter && matchesSearch;
+      const matchesSource = selectedSource === 'all' || item.source === selectedSource;
+      return matchesFilter && matchesSearch && matchesSource;
     });
 
   const getCompletionStats = (member) => {
@@ -177,7 +201,7 @@ const FFXIVContentTracker = () => {
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center gap-3 mb-2">
             <Users className="w-8 h-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">FFXIV Free Company Content Tracker</h1>
+            <h1 className="text-3xl font-bold text-gray-900">FC Tracker</h1>
           </div>
           <p className="text-gray-600">Track your FC's progress with live Lodestone data via Vercel serverless functions</p>
         </div>
@@ -266,12 +290,15 @@ const FFXIVContentTracker = () => {
                             src={member.avatar} 
                             alt={member.name}
                             className="w-12 h-12 rounded-full object-cover"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
                           />
-                        ) : (
-                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
-                            <Users className="w-6 h-6 text-gray-400" />
-                          </div>
-                        )}
+                        ) : null}
+                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center" style={{ display: member.avatar ? 'none' : 'flex' }}>
+                          <Users className="w-6 h-6 text-gray-400" />
+                        </div>
                       </div>
                       
                       <div className="flex-1 min-w-0">
@@ -359,6 +386,21 @@ const FFXIVContentTracker = () => {
               <option value="owned">Owned by FC Members</option>
             </select>
 
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-700">Source:</span>
+            </div>
+            <select 
+              value={selectedSource}
+              onChange={(e) => setSelectedSource(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              {contentSources.map(source => (
+                <option key={source} value={source}>
+                  {source === 'all' ? 'All Sources' : source}
+                </option>
+              ))}
+            </select>
+
             <button 
               onClick={() => loadContentFromAPI(selectedContentType)} 
               className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
@@ -388,7 +430,7 @@ const FFXIVContentTracker = () => {
             <span className="text-sm text-gray-500">({filteredContent.length} items)</span>
           </div>
 
-          <div className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {filteredContent.map((item) => {
               const completedMembers = fcMembers.filter(m => m.completedContent?.has(item.id));
               const completionRate = fcMembers.length > 0 ? Math.round((completedMembers.length / fcMembers.length) * 100) : 0;
@@ -398,7 +440,6 @@ const FFXIVContentTracker = () => {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
-                      <p className="text-sm text-gray-600 mb-3">{item.description || 'No description available'}</p>
                       
                       {item.source && (
                         <div className="text-sm text-blue-600 mb-2">
@@ -414,7 +455,7 @@ const FFXIVContentTracker = () => {
 
                       <div className="mb-3">
                         <div className="text-sm font-medium text-gray-700 mb-1">Member Progress:</div>
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1">
                           {fcMembers.map((member) => {
                             const hasCompleted = member.completedContent?.has(item.id);
                             return (
@@ -433,11 +474,11 @@ const FFXIVContentTracker = () => {
                     </div>
                     
                     <div className="text-right ml-4">
-                      <div className="text-2xl font-bold text-gray-900">
+                      <div className="text-xl font-bold text-gray-900">
                         {completedMembers.length}/{fcMembers.length}
                       </div>
-                      <div className="text-sm text-gray-600">completed</div>
-                      <div className="text-sm text-gray-500">{completionRate}% FC completion</div>
+                      <div className="text-xs text-gray-600">completed</div>
+                      <div className="text-xs text-gray-500">{completionRate}% FC completion</div>
                     </div>
                   </div>
                 </div>
