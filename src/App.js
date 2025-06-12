@@ -145,14 +145,18 @@ const FFXIVContentTracker = () => {
         setFcMembers(prev => prev.map(m => m.id === memberId ? { ...m, lodestoneId } : m));
       }
       const data = await fetchCharacterData(lodestoneId);
-      console.log('Character data received:', data); // Debug log
+      console.log('Full character data received:', data);
+      console.log('Portrait field:', data.portrait);
+      console.log('Available fields:', Object.keys(data));
       const completedByType = matchCollectionsToContent(data.collections);
-      setFcMembers(prev => prev.map(m => m.id === memberId ? { 
+      const newMemberData = { 
         ...m, 
         completedContent: completedByType, 
         lodestoneId, 
-        avatar: data.portrait // Use the portrait field from FFXIV Collect API
-      } : m));
+        avatar: data.portrait
+      };
+      console.log('Updated member data:', newMemberData);
+      setFcMembers(prev => prev.map(m => m.id === memberId ? newMemberData : m));
       setLastSyncTimes(prev => ({ ...prev, [memberId]: new Date() }));
     } catch (error) {
       setSyncErrors(prev => ({ ...prev, [memberId]: error.message }));
