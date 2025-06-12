@@ -126,9 +126,10 @@ const FFXIVContentTracker = () => {
 
   const fetchFCMembers = async () => {
     try {
-      const response = await fetch('https://na.finalfantasyxiv.com/lodestone/freecompany/9231394073691144051/member/');
-      const html = await response.text();
-      const parser = new DOMParser();
+      const response = await fetch(`${API_BASE}/freecompany/9231394073691144051`);
+      const members = await response.json();
+      setFcMemberList(members);
+      setAccordionOpen(true);
       const doc = parser.parseFromString(html, 'text/html');
       const entries = Array.from(doc.querySelectorAll('.entry'));
       const members = entries.map(entry => {
