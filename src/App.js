@@ -1,7 +1,6 @@
 // Full script for FFXIVContentTracker with FC member checklist integration
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Trophy, Download, Filter, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
-// removed jsdom import since we use cheerio now
 
 const FFXIVContentTracker = () => {
   const [content, setContent] = useState({ mounts: [], achievements: [], minions: [] });
@@ -78,6 +77,7 @@ const FFXIVContentTracker = () => {
     const member = fcMembers.find(m => m.id === memberId);
     if (!member) return;
     setSyncingMembers(prev => new Set(prev).add(memberId));
+    setSyncErrors(prev => ({ ...prev, [memberId]: null }));
     try {
       let lodestoneId = member.lodestoneId;
       if (!lodestoneId) {
@@ -151,102 +151,307 @@ const FFXIVContentTracker = () => {
       lodestoneId: m.lodestoneId || null
     }));
 
-    console.log('Adding selected FC members:', selectedFCMembers);
-    setFcMembers(prev => {
-      const updated = [...prev, ...newMembers];
-      console.log('Updated fcMembers:', updated);
-      return updated;
-    });
-
+    setFcMembers(prev => [...prev, ...newMembers]);
     setSelectedFCMembers([]);
     setAccordionOpen(false);
   };
 
+  const filteredContent = content[selectedContentType]
+    .filter(item => {
+      const ownedCount = fcMembers.filter(m => m.completedContent?.has(item.id)).length;
+      const matchesFilter = filterBy === 'missing' ? ownedCount < fcMembers.length : ownedCount === fcMembers.length;
+      const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesFilter && matchesSearch;
+    });
+
+  const getCompletionStats = (member) => {
+    const completed = member.completedContent ? member.completedContent.size : 0;
+    const total = content[selectedContentType].length;
+    return { completed, total, percentage: total > 0 ? Math.round((completed / total) * 100) : 0 };
+  };
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex gap-2">
-        <input
-          type="text"
-          placeholder="Character Name@Server"
-          value={newMember}
-          onChange={(e) => setNewMember(e.target.value)}
-          className="px-3 py-2 border rounded w-full"
-        />
-        <button onClick={addMember} className="px-4 py-2 bg-blue-600 text-white rounded">Add Member</button>
-        <button onClick={syncAllMembers} className="px-4 py-2 bg-green-600 text-white rounded">Sync All</button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Users className="w-8 h-8 text-blue-600" />
+            <h1 className="text-3xl font-bold text-gray-900">FFXIV Free Company Content Tracker</h1>
+          </div>
+          <p className="text-gray-600">Track your FC's progress with live Lodestone data via Vercel serverless functions</p>
+        </div>
       </div>
 
-      <div>
-        <button onClick={fetchFCMembers} className="px-4 py-2 bg-indigo-600 text-white rounded">
-          {accordionOpen ? 'Hide FC Member List' : 'Load FC Member List'}
-        </button>
-        {accordionOpen && (
-          <div className="mt-4 border rounded p-4 bg-white">
-            <h3 className="font-semibold mb-2">Add Members from FC</h3>
-            <div className="max-h-64 overflow-y-auto space-y-2">
-              {fcMemberList.map((member, i) => (
-                <label key={i} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={selectedFCMembers.includes(member)}
-                    onChange={() => toggleFCMemberSelection(member)}
-                  />
-                  {member.name}
-                </label>
-              ))}
-            </div>
-            <button onClick={addSelectedFCMembers} className="mt-3 px-4 py-2 bg-green-700 text-white rounded">
-              Add Selected Members
+      <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        {/* Free Company Members Section */}
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Users className="w-6 h-6 text-blue-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Free Company Members</h2>
+          </div>
+          
+          <div className="flex gap-3 mb-4">
+            <input
+              type="text"
+              placeholder="Character Name@Server (e.g., Cloud Strife@Excalibur)"
+              value={newMember}
+              onChange={(e) => setNewMember(e.target.value)}
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <button 
+              onClick={addMember} 
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+            >
+              Add Member
+            </button>
+            <button 
+              onClick={syncAllMembers} 
+              className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Sync All
             </button>
           </div>
-        )}
-      </div>
 
-      {fcMembers.length > 0 && (
-        <div className="mt-6 border-t pt-4">
-          <h2 className="text-lg font-semibold mb-2">Tracked Members</h2>
-          <ul className="space-y-2 mb-6">
-            {fcMembers.map((m, i) => (
-              <li key={m.id} className="text-sm">
-                ✅ {m.name}@{m.server || '???'} — Lodestone ID: {m.lodestoneId || 'Not yet synced'}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Content Selector and Filter Controls */}
-      <div className="flex flex-wrap items-center gap-4 border-t pt-6">
-        <div className="flex gap-2">
-          <button onClick={() => setSelectedContentType('mounts')} className={`px-3 py-1 rounded ${selectedContentType === 'mounts' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Mounts</button>
-          <button onClick={() => setSelectedContentType('minions')} className={`px-3 py-1 rounded ${selectedContentType === 'minions' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Minions</button>
-          <button onClick={() => setSelectedContentType('achievements')} className={`px-3 py-1 rounded ${selectedContentType === 'achievements' ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>Achievements</button>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={() => setFilterBy('missing')} className={`px-3 py-1 rounded ${filterBy === 'missing' ? 'bg-red-600 text-white' : 'bg-gray-200'}`}>Missing</button>
-          <button onClick={() => setFilterBy('owned')} className={`px-3 py-1 rounded ${filterBy === 'owned' ? 'bg-green-600 text-white' : 'bg-gray-200'}`}>Owned</button>
-        </div>
-      </div>
-
-      {/* Filtered Content Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-        {content[selectedContentType]
-          .filter(item => {
-            const ownedCount = fcMembers.filter(m => m.completedContent?.has(item.id)).length;
-            return filterBy === 'missing' ? ownedCount < fcMembers.length : ownedCount === fcMembers.length;
-          })
-          .map(item => (
-            <div key={item.id} className="border rounded p-3 bg-white shadow-sm">
-              <h4 className="font-medium mb-1">{item.name}</h4>
-              <div className="flex flex-wrap gap-2 text-sm">
-                {fcMembers.map(member => (
-                  <span key={member.id} className={`px-2 py-1 rounded text-white ${member.completedContent?.has(item.id) ? 'bg-green-500' : 'bg-gray-500'}`}>
-                    {member.name.split(' ')[0]}
-                  </span>
-                ))}
+          <div className="mb-6">
+            <button 
+              onClick={fetchFCMembers} 
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              {accordionOpen ? 'Hide FC Member List' : 'Load FC Member List'}
+            </button>
+            
+            {accordionOpen && (
+              <div className="mt-4 border rounded-lg p-4 bg-gray-50">
+                <h3 className="font-semibold mb-3">Add Members from FC</h3>
+                <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
+                  {fcMemberList.map((member, i) => (
+                    <label key={i} className="flex items-center gap-2 p-2 hover:bg-white rounded cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedFCMembers.includes(member)}
+                        onChange={() => toggleFCMemberSelection(member)}
+                        className="w-4 h-4 text-blue-600"
+                      />
+                      <span className="text-sm">{member.name}</span>
+                    </label>
+                  ))}
+                </div>
+                <button 
+                  onClick={addSelectedFCMembers} 
+                  className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors"
+                >
+                  Add Selected Members
+                </button>
               </div>
+            )}
+          </div>
+
+          {/* Member Cards */}
+          {fcMembers.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {fcMembers.map((member) => {
+                const stats = getCompletionStats(member);
+                const isSync = syncingMembers.has(member.id);
+                const error = syncErrors[member.id];
+                const lastSync = lastSyncTimes[member.id];
+                
+                return (
+                  <div key={member.id} className="border rounded-lg p-4 bg-white hover:shadow-md transition-shadow">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0">
+                        {member.avatar ? (
+                          <img 
+                            src={member.avatar} 
+                            alt={member.name}
+                            className="w-12 h-12 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center">
+                            <Users className="w-6 h-6 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-gray-900 truncate">{member.name}</h3>
+                        <p className="text-sm text-gray-600">@{member.server || '???'}</p>
+                        
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Progress</span>
+                            <span className="font-medium">{stats.completed}/{stats.total} ({stats.percentage}%)</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
+                            <div 
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                              style={{ width: `${stats.percentage}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {error && (
+                          <div className="mt-2 text-xs text-red-600 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {error}
+                          </div>
+                        )}
+
+                        {lastSync && (
+                          <div className="mt-1 text-xs text-gray-500">
+                            Last sync: {lastSync.toLocaleTimeString()}
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => syncMemberProgress(member.id)}
+                          disabled={isSync}
+                          className="p-1 text-gray-600 hover:text-blue-600 transition-colors disabled:opacity-50"
+                          title="Sync progress"
+                        >
+                          <RefreshCw className={`w-4 h-4 ${isSync ? 'animate-spin' : ''}`} />
+                        </button>
+                        <button
+                          onClick={() => removeMember(member.id)}
+                          className="p-1 text-gray-600 hover:text-red-600 transition-colors"
+                          title="Remove member"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-        ))}
+          )}
+        </div>
+
+        {/* Content Filters */}
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-600" />
+              <span className="font-medium text-gray-700">Content Type:</span>
+            </div>
+            <select 
+              value={selectedContentType}
+              onChange={(e) => setSelectedContentType(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="mounts">Mounts</option>
+              <option value="minions">Minions</option>
+              <option value="achievements">Achievements</option>
+            </select>
+
+            <div className="flex items-center gap-2">
+              <span className="font-medium text-gray-700">Filter:</span>
+            </div>
+            <select 
+              value={filterBy}
+              onChange={(e) => setFilterBy(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="missing">Missing by FC Members</option>
+              <option value="owned">Owned by FC Members</option>
+            </select>
+
+            <button 
+              onClick={() => loadContentFromAPI(selectedContentType)} 
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Refresh Content
+            </button>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search content..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Content Suggestions */}
+        <div className="bg-white rounded-xl shadow-sm border p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <Trophy className="w-6 h-6 text-yellow-600" />
+            <h2 className="text-xl font-semibold text-gray-900">Content Suggestions</h2>
+            <span className="text-sm text-gray-500">({filteredContent.length} items)</span>
+          </div>
+
+          <div className="space-y-4">
+            {filteredContent.map((item) => {
+              const completedMembers = fcMembers.filter(m => m.completedContent?.has(item.id));
+              const completionRate = fcMembers.length > 0 ? Math.round((completedMembers.length / fcMembers.length) * 100) : 0;
+              
+              return (
+                <div key={item.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 mb-1">{item.name}</h3>
+                      <p className="text-sm text-gray-600 mb-3">{item.description || 'No description available'}</p>
+                      
+                      {item.source && (
+                        <div className="text-sm text-blue-600 mb-2">
+                          <strong>Source:</strong> {item.source}
+                        </div>
+                      )}
+                      
+                      {item.patch && (
+                        <div className="text-sm text-gray-500 mb-3">
+                          Patch {item.patch} • Unknown difficulty
+                        </div>
+                      )}
+
+                      <div className="mb-3">
+                        <div className="text-sm font-medium text-gray-700 mb-1">Member Progress:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {fcMembers.map((member) => {
+                            const hasCompleted = member.completedContent?.has(item.id);
+                            return (
+                              <span
+                                key={member.id}
+                                className={`px-2 py-1 rounded-full text-xs text-white ${
+                                  hasCompleted ? 'bg-green-500' : 'bg-gray-400'
+                                }`}
+                              >
+                                {member.name.split(' ')[0]}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right ml-4">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {completedMembers.length}/{fcMembers.length}
+                      </div>
+                      <div className="text-sm text-gray-600">completed</div>
+                      <div className="text-sm text-gray-500">{completionRate}% FC completion</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredContent.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              <Trophy className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <p>No content found matching your filters.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
