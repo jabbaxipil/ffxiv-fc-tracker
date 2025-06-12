@@ -150,7 +150,7 @@ const FFXIVContentTracker = () => {
       console.log('Available fields:', Object.keys(data));
       const completedByType = matchCollectionsToContent(data.collections);
       const newMemberData = { 
-        ...m, 
+        ...member, 
         completedContent: completedByType, 
         lodestoneId, 
         avatar: data.portrait
