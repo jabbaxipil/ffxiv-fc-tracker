@@ -88,12 +88,44 @@ const FFXIVContentTracker = () => {
 
   const matchCollectionsToContent = (collections) => {
     const completedIds = new Set();
+    
+    // Debug logging to see what we're working with
+    console.log('Collections from API:', collections);
+    console.log('Current content:', content);
+    
     ['mounts', 'minions', 'achievements'].forEach(type => {
-      (collections[type] || []).forEach(item => {
-        const match = content[type].find(c => c.name.toLowerCase() === item.name.toLowerCase());
-        if (match) completedIds.add(match.id);
+      const collectionItems = collections[type] || [];
+      const contentItems = content[type] || [];
+      
+      console.log(`${type} - Collection items:`, collectionItems.length, 'Content items:', contentItems.length);
+      
+      collectionItems.forEach(item => {
+        // Try exact name match first
+        let match = contentItems.find(c => c.name === item.name);
+        
+        // If no exact match, try case-insensitive
+        if (!match) {
+          match = contentItems.find(c => c.name.toLowerCase() === item.name.toLowerCase());
+        }
+        
+        // If still no match, try fuzzy matching (remove special characters)
+        if (!match) {
+          const cleanItemName = item.name.replace(/[^\w\s]/gi, '').toLowerCase();
+          match = contentItems.find(c => 
+            c.name.replace(/[^\w\s]/gi, '').toLowerCase() === cleanItemName
+          );
+        }
+        
+        if (match) {
+          completedIds.add(match.id);
+          console.log(`Matched: "${item.name}" -> "${match.name}" (ID: ${match.id})`);
+        } else {
+          console.log(`No match found for: "${item.name}"`);
+        }
       });
     });
+    
+    console.log('Total matched IDs:', completedIds.size);
     return completedIds;
   };
 
