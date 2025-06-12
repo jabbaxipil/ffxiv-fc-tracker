@@ -6,17 +6,20 @@ export default async function handler(req, res) {
   if (!id) return res.status(400).json({ error: 'Free Company ID is required' });
 
   try {
-    const fcUrl = `https://ffxivcollect.com/fc/${id}`;
     const response = await fetch(fcUrl, {
-      headers: { 'User-Agent': 'Mozilla/5.0' }
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml'
+      }
     });
 
     const html = await response.text();
 
     if (!response.ok || !html.includes('/characters/')) {
-      return res.status(response.status).json({
-        error: `FFXIVCollect failed or returned no usable data`,
-        htmlSnippet: html.slice(0, 200)
+      console.error('Unexpected response from FFXIVCollect');
+      return res.status(500).json({
+        error: 'Could not load Free Company member list from FFXIVCollect.'
       });
     }
 
