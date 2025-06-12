@@ -111,7 +111,8 @@ const FFXIVContentTracker = () => {
       
       const characterData = await response.json();
       console.log('✅ Character data received:', characterData);
-      
+      console.log("🎯 Raw character collections:", characterData.collections);
+
       return characterData;
       
     } catch (error) {
