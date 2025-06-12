@@ -3,10 +3,13 @@ import cheerio from 'cheerio';
 export default async function handler(req, res) {
   const { id } = req.query;
 
-  if (!id) return res.status(400).json({ error: 'Free Company ID is required' });
+  if (!id) {
+    return res.status(400).json({ error: 'Free Company ID is required' });
+  }
 
   try {
-    const response = await fetch(fcUrl, {
+    const url = `https://ffxivcollect.com/fc/${id}`;
+    const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
         'Accept-Language': 'en-US,en;q=0.9',
@@ -17,7 +20,7 @@ export default async function handler(req, res) {
     const html = await response.text();
 
     if (!response.ok || !html.includes('/characters/')) {
-      console.error('Unexpected response from FFXIVCollect');
+      console.error('❌ Unexpected response from FFXIVCollect');
       return res.status(500).json({
         error: 'Could not load Free Company member list from FFXIVCollect.'
       });
