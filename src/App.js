@@ -124,6 +124,30 @@ const FFXIVContentTracker = () => {
   const matchCollectionsToContent = (characterCollections) => {
     const completedIds = new Set();
     
+    console.log("🔍 Matching mounts:");
+    characterCollections.mounts?.forEach(mount => {
+      const match = content.mounts.find(c =>
+        c.name.toLowerCase() === mount.name.toLowerCase()
+      );
+      console.log(`  → Character has mount: "${mount.name}" — Match found: ${!!match}`);
+    });
+
+    console.log("🔍 Matching minions:");
+    characterCollections.minions?.forEach(minion => {
+      const match = content.minions.find(c =>
+        c.name.toLowerCase() === minion.name.toLowerCase()
+      );
+      console.log(`  → Character has minion: "${minion.name}" — Match found: ${!!match}`);
+    });
+
+    console.log("🔍 Matching achievements:");
+    characterCollections.achievements?.forEach(achievement => {
+      const match = content.achievements.find(c =>
+        c.name.toLowerCase() === achievement.name.toLowerCase()
+      );
+      console.log(`  → Character has achievement: "${achievement.name}" — Match found: ${!!match}`);
+    });
+
     // Match mounts by name
     if (characterCollections.mounts) {
       characterCollections.mounts.forEach(mount => {
