@@ -1,4 +1,17 @@
-const data = await fetchCharacterData(lodestoneId);
+const syncMemberProgress = async (memberId) => {
+    const member = fcMembers.find(m => m.id === memberId);
+    if (!member) return;
+    setSyncingMembers(prev => new Set(prev).add(memberId));
+    setSyncErrors(prev => ({ ...prev, [memberId]: null }));
+    try {
+      let lodestoneId = member.lodestoneId;
+      if (!lodestoneId) {
+        const result = await searchCharacter(member.name, member.server);
+        if (!result) throw new Error('Character not found');
+        lodestoneId = result.lodestoneId;
+        setFcMembers(prev => prev.map(m => m.id === memberId ? { ...m, lodestoneId } : m));
+      }
+      const data = await fetchCharacterData(lodestoneId);
       console.log('Full character data received:', data);
       console.log('Portrait field:', data.portrait);
       console.log('Avatar field:', data.avatar);
@@ -11,7 +24,14 @@ const data = await fetchCharacterData(lodestoneId);
         avatar: data.portrait || data.avatar // Try portrait first, then avatar as fallback
       };
       console.log('Updated member data:', newMemberData);
-      setFcMembers(prev => prev.map(m => m.id === memberId ? newMemberData : m));// Full script for FFXIVContentTracker with FC member checklist integration
+      setFcMembers(prev => prev.map(m => m.id === memberId ? newMemberData : m));
+      setLastSyncTimes(prev => ({ ...prev, [memberId]: new Date() }));
+    } catch (error) {
+      setSyncErrors(prev => ({ ...prev, [memberId]: error.message }));
+    } finally {
+      setSyncingMembers(prev => { const newSet = new Set(prev); newSet.delete(memberId); return newSet; });
+    }
+  };// Full script for FFXIVContentTracker with FC member checklist integration
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Trophy, Download, Filter, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 
