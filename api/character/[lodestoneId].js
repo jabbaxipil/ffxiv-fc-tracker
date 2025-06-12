@@ -17,11 +17,18 @@ export default async function handler(req, res) {
 
   try {
     const response = await fetch(`https://ffxivcollect.com/api/characters/${lodestoneId}`);
+
     if (!response.ok) {
-      if (response.status === 404) {
-        return res.status(404).json({ error: 'Character not found on FFXIVCollect' });
-      }
-      throw new Error(`FFXIVCollect returned ${response.status}`);
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+
+      const errorText = isJson
+        ? (await response.json()).error
+        : await response.text();
+
+      return res.status(response.status).json({
+        error: `FFXIVCollect error: ${errorText || `HTTP ${response.status}`}`
+      });
     }
 
     const data = await response.json();
