@@ -143,7 +143,11 @@ const FFXIVContentTracker = () => {
   };
 
   const toggleFCMemberSelection = (member) => {
-    setSelectedFCMembers(prev => prev.includes(member) ? prev.filter(m => m !== member) : [...prev, member]);
+    setSelectedFCMembers(prev =>
+      prev.some(m => m.lodestoneId === member.lodestoneId)
+        ? prev.filter(m => m.lodestoneId !== member.lodestoneId)
+        : [...prev, member]
+    );
   };
 
   const addSelectedFCMembers = () => {
@@ -179,7 +183,7 @@ const FFXIVContentTracker = () => {
                 <label key={i} className="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    checked={selectedFCMembers.includes(member)}
+                    checked={selectedFCMembers.some(m => m.lodestoneId === member.lodestoneId)}
                     onChange={() => toggleFCMemberSelection(member)}
                   />
                   {member.name}
