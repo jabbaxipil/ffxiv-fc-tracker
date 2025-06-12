@@ -17,7 +17,7 @@ const FFXIVContentTracker = () => {
 
   // API base URL - will be your Vercel deployment URL
   const API_BASE = process.env.NODE_ENV === 'production' 
-    ? 'https://your-app.vercel.app/api' 
+    ? 'https://ffxiv-fc-tracker.vercel.app/api' 
     : '/api';
 
   // Initialize with sample data
