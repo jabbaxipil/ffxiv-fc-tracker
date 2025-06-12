@@ -42,7 +42,8 @@ export default async function handler(req, res) {
         mounts: data.mounts?.entries || [],
         minions: data.minions?.entries || [],
         achievements: data.achievements?.entries || []
-      };
+      }
+    }
 
     console.log(`✅ Retrieved from FFXIVCollect: ${characterData.mounts?.length || 0} mounts`);
 
