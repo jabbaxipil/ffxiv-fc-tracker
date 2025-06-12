@@ -145,8 +145,14 @@ const FFXIVContentTracker = () => {
         setFcMembers(prev => prev.map(m => m.id === memberId ? { ...m, lodestoneId } : m));
       }
       const data = await fetchCharacterData(lodestoneId);
+      console.log('Character data received:', data); // Debug log
       const completedByType = matchCollectionsToContent(data.collections);
-      setFcMembers(prev => prev.map(m => m.id === memberId ? { ...m, completedContent: completedByType, lodestoneId, avatar: data.avatar } : m));
+      setFcMembers(prev => prev.map(m => m.id === memberId ? { 
+        ...m, 
+        completedContent: completedByType, 
+        lodestoneId, 
+        avatar: data.portrait // Use the portrait field from FFXIV Collect API
+      } : m));
       setLastSyncTimes(prev => ({ ...prev, [memberId]: new Date() }));
     } catch (error) {
       setSyncErrors(prev => ({ ...prev, [memberId]: error.message }));
@@ -342,7 +348,9 @@ const FFXIVContentTracker = () => {
                       
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-gray-900 truncate">{member.name}</h3>
-                        <p className="text-sm text-gray-600">@{member.server || '???'}</p>
+                        {member.server && member.server !== '???' && (
+                          <p className="text-sm text-gray-600">@{member.server}</p>
+                        )}
                         
                         <div className="mt-2">
                           <div className="flex items-center justify-between text-sm">
