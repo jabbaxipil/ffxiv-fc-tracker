@@ -1,37 +1,4 @@
-const syncMemberProgress = async (memberId) => {
-    const member = fcMembers.find(m => m.id === memberId);
-    if (!member) return;
-    setSyncingMembers(prev => new Set(prev).add(memberId));
-    setSyncErrors(prev => ({ ...prev, [memberId]: null }));
-    try {
-      let lodestoneId = member.lodestoneId;
-      if (!lodestoneId) {
-        const result = await searchCharacter(member.name, member.server);
-        if (!result) throw new Error('Character not found');
-        lodestoneId = result.lodestoneId;
-        setFcMembers(prev => prev.map(m => m.id === memberId ? { ...m, lodestoneId } : m));
-      }
-      const data = await fetchCharacterData(lodestoneId);
-      console.log('Full character data received:', data);
-      console.log('Portrait field:', data.portrait);
-      console.log('Avatar field:', data.avatar);
-      console.log('Available fields:', Object.keys(data));
-      const completedByType = matchCollectionsToContent(data.collections);
-      const newMemberData = { 
-        ...member, 
-        completedContent: completedByType, 
-        lodestoneId, 
-        avatar: data.portrait || data.avatar // Try portrait first, then avatar as fallback
-      };
-      console.log('Updated member data:', newMemberData);
-      setFcMembers(prev => prev.map(m => m.id === memberId ? newMemberData : m));
-      setLastSyncTimes(prev => ({ ...prev, [memberId]: new Date() }));
-    } catch (error) {
-      setSyncErrors(prev => ({ ...prev, [memberId]: error.message }));
-    } finally {
-      setSyncingMembers(prev => { const newSet = new Set(prev); newSet.delete(memberId); return newSet; });
-    }
-  };// Full script for FFXIVContentTracker with FC member checklist integration
+// Full script for FFXIVContentTracker with FC member checklist integration
 import React, { useState, useEffect } from 'react';
 import { Search, Users, Trophy, Download, Filter, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 
@@ -180,16 +147,15 @@ const FFXIVContentTracker = () => {
       const data = await fetchCharacterData(lodestoneId);
       console.log('Full character data received:', data);
       console.log('Portrait field:', data.portrait);
+      console.log('Avatar field:', data.avatar);
       console.log('Available fields:', Object.keys(data));
       const completedByType = matchCollectionsToContent(data.collections);
-      const newMemberData = { 
-        ...member, 
+      setFcMembers(prev => prev.map(m => m.id === memberId ? { 
+        ...m, 
         completedContent: completedByType, 
         lodestoneId, 
-        avatar: data.portrait
-      };
-      console.log('Updated member data:', newMemberData);
-      setFcMembers(prev => prev.map(m => m.id === memberId ? newMemberData : m));
+        avatar: data.portrait || data.avatar
+      } : m));
       setLastSyncTimes(prev => ({ ...prev, [memberId]: new Date() }));
     } catch (error) {
       setSyncErrors(prev => ({ ...prev, [memberId]: error.message }));
@@ -506,7 +472,7 @@ const FFXIVContentTracker = () => {
           </div>
         </div>
 
-        {/* Content Suggestions */}
+        {/* Collection */}
         <div className="bg-white rounded-xl shadow-sm border p-6">
           <div className="flex items-center gap-3 mb-6">
             <Trophy className="w-6 h-6 text-yellow-600" />
