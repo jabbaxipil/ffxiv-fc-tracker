@@ -8,6 +8,12 @@ const FFXIVContentTracker = () => {
   const [newMember, setNewMember] = useState('');
   const [selectedDataCenter, setSelectedDataCenter] = useState('');
   const [selectedServer, setSelectedServer] = useState('');
+  const [fcSearchName, setFcSearchName] = useState('');
+  const [fcSearchDataCenter, setFcSearchDataCenter] = useState('');
+  const [fcSearchServer, setFcSearchServer] = useState('');
+  const [fcSearchResults, setFcSearchResults] = useState([]);
+  const [selectedFC, setSelectedFC] = useState(null);
+  const [loadingFCSearch, setLoadingFCSearch] = useState(false);
   const [selectedContentType, setSelectedContentType] = useState('mounts');
   const [filterBy, setFilterBy] = useState('missing');
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,6 +55,14 @@ const FFXIVContentTracker = () => {
       Object.keys(dataCenters[region]).includes(selectedDataCenter)
     );
     return region ? dataCenters[region][selectedDataCenter] : [];
+  };
+
+  const getServersForSearchDataCenter = () => {
+    if (!fcSearchDataCenter) return [];
+    const region = Object.keys(dataCenters).find(region => 
+      Object.keys(dataCenters[region]).includes(fcSearchDataCenter)
+    );
+    return region ? dataCenters[region][fcSearchDataCenter] : [];
   };
 
   // Dynamic content sources - will be populated from API data
@@ -231,9 +245,31 @@ const FFXIVContentTracker = () => {
     }));
   };
 
-  const fetchFCMembers = async () => {
+  const searchFreeCompanies = async () => {
+    if (!fcSearchName.trim() || !fcSearchServer) return;
+    
+    setLoadingFCSearch(true);
+    setFcSearchResults([]);
     try {
-      const response = await fetch(`${API_BASE}/freecompany/9231394073691144051`);
+      const response = await fetch(`${API_BASE}/freecompany/search?name=${encodeURIComponent(fcSearchName)}&server=${encodeURIComponent(fcSearchServer)}`);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setFcSearchResults(data);
+      } else {
+        console.error('FC search error:', data.error);
+        setFcSearchResults([]);
+      }
+    } catch (err) {
+      console.error('Failed to search FCs:', err);
+      setFcSearchResults([]);
+    } finally {
+      setLoadingFCSearch(false);
+    }
+  };
+
+  const fetchFCMembers = async (fcId) => {
+    try {
+      const response = await fetch(`${API_BASE}/freecompany/${fcId}`);
       const data = await response.json();
       if (!Array.isArray(data)) throw new Error(data.error || 'Unexpected response from server');
       setFcMemberList(data);
@@ -364,16 +400,100 @@ const FFXIVContentTracker = () => {
           </div>
 
           <div className="mb-6">
-            <button 
-              onClick={fetchFCMembers} 
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              {accordionOpen ? 'Hide FC Member List' : 'Load FC Member List'}
-            </button>
+            <h3 className="font-semibold mb-3">Search for Free Company</h3>
             
-            {accordionOpen && (
-              <div className="mt-4 border rounded-lg p-4 bg-gray-50">
-                <h3 className="font-semibold mb-3">Add Members from FC</h3>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+              <input
+                type="text"
+                placeholder="FC Name (e.g., Maelstrom)"
+                value={fcSearchName}
+                onChange={(e) => setFcSearchName(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              
+              <select
+                value={fcSearchDataCenter}
+                onChange={(e) => {
+                  setFcSearchDataCenter(e.target.value);
+                  setFcSearchServer(''); // Reset server when data center changes
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select Data Center</option>
+                {Object.keys(dataCenters).map(region => (
+                  <optgroup key={region} label={region}>
+                    {Object.keys(dataCenters[region]).map(dc => (
+                      <option key={dc} value={dc}>{dc}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+              
+              <select
+                value={fcSearchServer}
+                onChange={(e) => setFcSearchServer(e.target.value)}
+                disabled={!fcSearchDataCenter}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+              >
+                <option value="">Select Server</option>
+                {getServersForSearchDataCenter().map(server => (
+                  <option key={server} value={server}>{server}</option>
+                ))}
+              </select>
+              
+              <button 
+                onClick={searchFreeCompanies}
+                disabled={!fcSearchName.trim() || !fcSearchServer || loadingFCSearch}
+                className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {loadingFCSearch ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  'Search FCs'
+                )}
+              </button>
+            </div>
+
+            {/* FC Search Results */}
+            {fcSearchResults.length > 0 && (
+              <div className="mb-4 border rounded-lg p-4 bg-gray-50">
+                <h4 className="font-medium mb-3">Found Free Companies:</h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {fcSearchResults.map((fc, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-white rounded border hover:shadow-sm">
+                      <div>
+                        <div className="font-medium text-gray-900">{fc.name}</div>
+                        <div className="text-sm text-gray-600">{fc.server} • {fc.tag || 'No tag'}</div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedFC(fc);
+                          fetchFCMembers(fc.id);
+                        }}
+                        className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors text-sm"
+                      >
+                        Load Members
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Selected FC Info */}
+            {selectedFC && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="font-medium text-blue-900">Selected FC: {selectedFC.name}</div>
+                <div className="text-sm text-blue-700">{selectedFC.server} • {selectedFC.tag || 'No tag'}</div>
+              </div>
+            )}
+            
+            {accordionOpen && fcMemberList.length > 0 && (
+              <div className="border rounded-lg p-4 bg-gray-50">
+                <h3 className="font-semibold mb-3">Add Members from {selectedFC?.name || 'FC'}</h3>
                 <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
                   {fcMemberList.map((member, i) => (
                     <label key={i} className="flex items-center gap-2 p-2 hover:bg-white rounded cursor-pointer">
@@ -387,12 +507,23 @@ const FFXIVContentTracker = () => {
                     </label>
                   ))}
                 </div>
-                <button 
-                  onClick={addSelectedFCMembers} 
-                  className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors"
-                >
-                  Add Selected Members
-                </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={addSelectedFCMembers} 
+                    className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors"
+                  >
+                    Add Selected Members
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setAccordionOpen(false);
+                      setSelectedFCMembers([]);
+                    }} 
+                    className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </div>
