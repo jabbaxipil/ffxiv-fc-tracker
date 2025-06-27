@@ -6,6 +6,8 @@ const FFXIVContentTracker = () => {
   const [content, setContent] = useState({ mounts: [], achievements: [], minions: [] });
   const [fcMembers, setFcMembers] = useState([]);
   const [newMember, setNewMember] = useState('');
+  const [selectedDataCenter, setSelectedDataCenter] = useState('');
+  const [selectedServer, setSelectedServer] = useState('');
   const [selectedContentType, setSelectedContentType] = useState('mounts');
   const [filterBy, setFilterBy] = useState('missing');
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,9 +21,38 @@ const FFXIVContentTracker = () => {
   const [selectedSource, setSelectedSource] = useState('all');
   const [accordionOpen, setAccordionOpen] = useState(false);
   
-  // Dynamic content sources - will be populated from API data
-  const [contentSources, setContentSources] = useState(['all']);
+  // FFXIV Data Centers and Servers
+  const dataCenters = {
+    'North America': {
+      'Aether': ['Adamantoise', 'Cactuar', 'Faerie', 'Gilgamesh', 'Jenova', 'Midgardsormr', 'Sargatanas', 'Siren'],
+      'Crystal': ['Balmung', 'Brynhildr', 'Coeurl', 'Diabolos', 'Goblin', 'Malboro', 'Mateus', 'Zalera'],
+      'Dynamis': ['Halicarnassus', 'Maduin', 'Marilith', 'Seraph'],
+      'Primal': ['Behemoth', 'Excalibur', 'Exodus', 'Famfrit', 'Hyperion', 'Lamia', 'Leviathan', 'Ultros']
+    },
+    'Europe': {
+      'Chaos': ['Cerberus', 'Louisoix', 'Moogle', 'Omega', 'Phantom', 'Ragnarok', 'Sagittarius', 'Spriggan'],
+      'Light': ['Alpha', 'Lich', 'Odin', 'Phoenix', 'Raiden', 'Shiva', 'Twintania', 'Zodiark']
+    },
+    'Japan': {
+      'Elemental': ['Aegis', 'Atomos', 'Carbuncle', 'Garuda', 'Gungnir', 'Kujata', 'Tonberry', 'Typhon'],
+      'Gaia': ['Alexander', 'Bahamut', 'Durandal', 'Fenrir', 'Ifrit', 'Ridill', 'Tiamat', 'Ultima'],
+      'Mana': ['Anima', 'Asura', 'Chocobo', 'Hades', 'Ixion', 'Masamune', 'Pandaemonium', 'Titan']
+    },
+    'Oceania': {
+      'Materia': ['Bismarck', 'Ravana', 'Sephirot', 'Sophia', 'Zurvan']
+    }
+  };
 
+  const getServersForDataCenter = () => {
+    if (!selectedDataCenter) return [];
+    const region = Object.keys(dataCenters).find(region => 
+      Object.keys(dataCenters[region]).includes(selectedDataCenter)
+    );
+    return region ? dataCenters[region][selectedDataCenter] : [];
+  };
+
+  // Dynamic content sources - will be populated from API data
+  const [contentSources, setContentSources] = useState(['all']); 
   const API_BASE = process.env.NODE_ENV === 'production' 
     ? 'https://ffxiv-fc-tracker.vercel.app/api' 
     : '/api';
@@ -172,10 +203,18 @@ const FFXIVContentTracker = () => {
   };
 
   const addMember = () => {
-    const [name, server] = newMember.split('@');
-    if (name && server) {
-      setFcMembers([...fcMembers, { name: name.trim(), server: server.trim(), id: Date.now(), completedContent: { mounts: new Set(), minions: new Set(), achievements: new Set() }, lodestoneId: null }]);
+    const name = newMember.trim();
+    if (name && selectedServer) {
+      setFcMembers([...fcMembers, { 
+        name: name, 
+        server: selectedServer, 
+        id: Date.now(), 
+        completedContent: { mounts: new Set(), minions: new Set(), achievements: new Set() }, 
+        lodestoneId: null 
+      }]);
       setNewMember('');
+      setSelectedDataCenter('');
+      setSelectedServer('');
     }
   };
 
@@ -266,20 +305,55 @@ const FFXIVContentTracker = () => {
             <h2 className="text-xl font-semibold text-gray-900">Free Company Members</h2>
           </div>
           
-          <div className="flex gap-3 mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <input
               type="text"
-              placeholder="Character Name@Server (e.g., Cloud Strife@Excalibur)"
+              placeholder="Character Name (e.g., Cloud Strife)"
               value={newMember}
               onChange={(e) => setNewMember(e.target.value)}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            
+            <select
+              value={selectedDataCenter}
+              onChange={(e) => {
+                setSelectedDataCenter(e.target.value);
+                setSelectedServer(''); // Reset server when data center changes
+              }}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            >
+              <option value="">Select Data Center</option>
+              {Object.keys(dataCenters).map(region => (
+                <optgroup key={region} label={region}>
+                  {Object.keys(dataCenters[region]).map(dc => (
+                    <option key={dc} value={dc}>{dc}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            
+            <select
+              value={selectedServer}
+              onChange={(e) => setSelectedServer(e.target.value)}
+              disabled={!selectedDataCenter}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">Select Server</option>
+              {getServersForDataCenter().map(server => (
+                <option key={server} value={server}>{server}</option>
+              ))}
+            </select>
+            
             <button 
               onClick={addMember} 
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              disabled={!newMember.trim() || !selectedServer}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               Add Member
             </button>
+          </div>
+          
+          <div className="flex gap-3 mb-4">
             <button 
               onClick={syncAllMembers} 
               className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
